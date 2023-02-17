@@ -5,7 +5,7 @@ Script to download a CSV file with all the people in your organization
 ## Installation
 
 For now the binary is hosted in the Github Actions artifacts.
-You need to go to `Actions` and click to the last green commit
+You need to go to [Actions](https://github.com/codacy/codacy-people-csv/actions) and click to the last green commit
 then you can scroll to the bottom and download the launchers archive:
 ![launchers](images/artifacts.png)
 
