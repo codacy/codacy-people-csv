@@ -5,27 +5,32 @@
 
 import java.{util => ju}
 import java.time.Instant
+import scala.collection.mutable
 
 @mainargs.main
 def csv(provider: String, organization: String, token: String) = {
-  def getPage(cursor: Option[String]) = {
-    val data = ujson.read(
-      requests.get.stream(
-        s"https://app.codacy.com/api/v3/organizations/$provider/$organization/people",
-        params = cursor.map("cursor" -> _).toSeq,
-        headers = Seq(
-          "api-token" -> token
+  def getAll() = {
+    val headers = mutable.Set.empty[String]
+
+    def getPage(cursor: Option[String]) = {
+      val data = ujson.read(
+        requests.get.stream(
+          s"https://app.codacy.com/api/v3/organizations/$provider/$organization/people",
+          params = cursor.map("cursor" -> _).toSeq,
+          headers = Seq(
+            "api-token" -> token
+          )
         )
       )
-    )
-    val nextCursor =
-      try { Some(data("pagination")("cursor").str) }
-      catch { case _: ju.NoSuchElementException => None }
+      val nextCursor =
+        try { Some(data("pagination")("cursor").str) }
+        catch { case _: ju.NoSuchElementException => None }
 
-    data("data").arr -> nextCursor
-  }
+      val dataArray = data("data").arr
+      dataArray.foreach { elem => headers ++= elem.obj.keySet }
+      dataArray -> nextCursor
+    }
 
-  def getAll() = {
     def loop(cursor: Option[String]): (collection.Seq[ujson.Value]) = {
       getPage(cursor) match {
         case (data, Some(newCursor)) => data ++ loop(Some(newCursor))
@@ -33,17 +38,22 @@ def csv(provider: String, organization: String, token: String) = {
       }
     }
 
-    loop(cursor = None)
+    val result = loop(cursor = None)
+    headers.toSeq.sorted -> result
   }
 
-  val lines = getAll().map { json =>
-    val obj = json.obj
-    def get(name: String) =
-      obj.get(name).map(email => s"\"${email.str}\"").getOrElse("")
-    s"${get("email")},${get("name")},${get("lastAnalysis")},${get("lastLogin")}"
-  }
+  val (headers, jsonObjects) = getAll()
+  val lines = jsonObjects
+    .map { json =>
+      val obj = json.obj
+      headers
+        .map(name =>
+          obj.get(name).map(value => s"\"${value.str}\"").getOrElse("")
+        )
+        .mkString(",")
+    }
 
-  val content = ("email,name,lastAnalysis,lastLogin" +: lines).mkString("\n")
+  val content = (headers.mkString(",") +: lines).mkString("\n")
 
   val now = Instant.now()
   val file = os.pwd / s"$organization-people-$now.csv"
