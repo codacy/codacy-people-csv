@@ -18,8 +18,16 @@ val scalaCLILauncher =
   if (Properties.isWin) "scala-cli.bat" else "scala-cli"
 
 os.makeDir(artifactsPath)
-os.proc(scalaCLILauncher, "package", ".", "-o", destPath, "--native-image")
-  .call(cwd = os.pwd)
+os.proc(
+  scalaCLILauncher,
+  "package",
+  ".",
+  "-o",
+  destPath,
+  "--native-image",
+  "--graalvm-args",
+  "--enable-url-protocols=https"
+).call(cwd = os.pwd)
   .out
   .text()
   .trim
