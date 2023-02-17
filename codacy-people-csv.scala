@@ -40,13 +40,15 @@ def csv(provider: String, organization: String, token: String) = {
     val obj = json.obj
     def get(name: String) =
       obj.get(name).map(email => s"\"${email.str}\"").getOrElse("")
-    s"${get("email")},${get("name")},${get("lastAnalysis")},${get("lastCommit")}"
+    s"${get("email")},${get("name")},${get("lastAnalysis")},${get("lastLogin")}"
   }
 
-  val content = ("email,name,lastAnalysis,lastCommit" +: lines).mkString("\n")
+  val content = ("email,name,lastAnalysis,lastLogin" +: lines).mkString("\n")
 
   val now = Instant.now()
-  os.write.over(os.pwd / s"$organization-people-$now.csv", content)
+  val file = os.pwd / s"$organization-people-$now.csv"
+  os.write.over(file, content)
+  println(s"Saved the list of people in $organization to $file")
 }
 
 @main
